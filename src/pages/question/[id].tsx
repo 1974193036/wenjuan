@@ -1,29 +1,58 @@
-import Head from 'next/head'
+// import Head from 'next/head'
 import { Button, Form, Skeleton } from 'react-vant'
 import axios from 'axios'
 import Router from 'next/router'
 import PageWrapper from '@/components/PageWrapper'
-import QuestionInput from '@/components/QuestionComponents/QuestionInput'
-import QuestionRadio from '@/components/QuestionComponents/QuestionRadio'
-import QuestionCheckbox from '@/components/QuestionComponents/QuestionCheckbox'
-import QuestionTextarea from '@/components/QuestionComponents/QuestionTextarea'
-import QuestionParagraph from '@/components/QuestionComponents/QuestionParagraph'
-import QuestionTitle from '@/components/QuestionComponents/QuestionTitle'
-import QuestionInfo from '@/components/QuestionComponents/QuestionInfo'
+// import QuestionInput from '@/components/QuestionComponents/QuestionInput'
+// import QuestionRadio from '@/components/QuestionComponents/QuestionRadio'
+// import QuestionCheckbox from '@/components/QuestionComponents/QuestionCheckbox'
+// import QuestionTextarea from '@/components/QuestionComponents/QuestionTextarea'
+// import QuestionParagraph from '@/components/QuestionComponents/QuestionParagraph'
+// import QuestionTitle from '@/components/QuestionComponents/QuestionTitle'
+// import QuestionInfo from '@/components/QuestionComponents/QuestionInfo'
 import { useState } from 'react'
+import { getQuestionById } from '@/service/question'
+import Fail from '../fail'
+import { getComponent } from '@/components/QuestionComponents'
 
 type PropsType = {
-  id: string
+  errno: number
+  data: {
+    id: string
+    title: string
+    desc?: string
+    js?: string
+    css?: string
+    isDeleted: boolean
+    isPublished: boolean
+    componentList: Array<any>
+  }
+  msg?: string
 }
 
 // 访问该页面路径：http://localhost:3000/question/150000200406079038
 
 export default function Question(props: PropsType) {
-  // console.log(props.id)
+  const { errno, data, msg } = props
+
   const [loading, setLoading] = useState(false)
 
+  if (errno !== 0) {
+    return <Fail msg={msg} />
+  }
+
+  const { id, title, desc, isDeleted, isPublished, componentList = [] } = data
+
+  if (isDeleted) {
+    return <Fail msg="该问卷已被删除" />
+  }
+
+  if (!isPublished) {
+    return <Fail msg="该问卷尚未发布" />
+  }
+
   const onFinish = (values: any) => {
-    const data = { questionId: props.id, ...values }
+    const data = { questionId: id, ...values }
 
     setLoading(true)
 
@@ -41,8 +70,16 @@ export default function Question(props: PropsType) {
       })
   }
 
+  const ComponentListElem = <>
+    {componentList.map(item => {
+      const {fe_id} = item
+      const comp = getComponent(item)
+      return <div key={fe_id}>{comp}</div>
+    })}
+  </>
+
   return (
-    <PageWrapper title="Question" desc="question page">
+    <PageWrapper title={title} desc={desc}>
       <Form
         layout="vertical"
         onFinish={onFinish}
@@ -65,7 +102,8 @@ export default function Question(props: PropsType) {
           boxSizing: 'border-box'
         }}
       >
-        <QuestionInfo title="问卷标题" desc="问卷描述" />
+        {ComponentListElem}
+        {/* <QuestionInfo title="问卷标题" desc="问卷描述" />
         <QuestionTitle text="个人信息调研" level={2} isCenter={false} />
         <QuestionInput
           fe_id="c2"
@@ -104,7 +142,7 @@ export default function Question(props: PropsType) {
             ],
             isVertical: false
           }}
-        />
+        /> */}
       </Form>
     </PageWrapper>
   )
@@ -115,10 +153,9 @@ export async function getServerSideProps(context: any) {
 
   const { id = '' } = context.params // 从url路径中获取id
 
+  const { data } = await getQuestionById(id)
+
   return {
-    props: {
-      id
-      // 其他数据
-    }
+    props: data
   }
 }
